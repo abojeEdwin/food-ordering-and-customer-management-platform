@@ -1,87 +1,89 @@
 
-const { Category, FoodItem, Order } = require('../model');
-const AppError = require('../utils/appError');
+const Category = require('../model/category.model');
+const FoodItem = require('../model/foodItem.model');
+const Order = require('../model/order.model');
+const AppError = require("../utils/appError");
 
-const createCategory = async (categoryData) => {
-  const existingCategory = await Category.findOne({ name: categoryData.name });
+
+const createCategory = async (categoryBody) => {
+  const existingCategory = await Category.findOne({ name: categoryBody.name });
   if (existingCategory) {
     throw new AppError('Category already exists', 400);
   }
-  const category = await Category.create(categoryData);
-  return category;
+  return Category.create(categoryBody);
 };
 
-const addFoodItem = async (foodItemData) => {
-  const category = await Category.findOne(foodItemData.categoryName);
+const addFoodItem = async (foodItemBody) => {
+  const category = await Category.findById(foodItemBody.categoryId);
   if (!category) {
     throw new AppError('Category not found', 404);
   }
-  const foodItem = await FoodItem.create(foodItemData);
-  return foodItem;
+  const existingFoodItem = await FoodItem.findOne({ name: foodItemBody.name, categoryId: foodItemBody.categoryId });
+  if (existingFoodItem) {
+    throw new AppError('Food item already exists', 400);
+  }
+  return FoodItem.create(foodItemBody);
 };
 
-const updateFoodItem = async (id, updateData) => {
-  const foodItem = await FoodItem.findByIdAndUpdate(id, updateData, {
-    new: true,
-    runValidators: true,
-  });
+
+const updateFoodItem = async (foodItemId, updateBody) => {
+  const foodItem = await FoodItem.findByIdAndUpdate(foodItemId, updateBody, { new: true });
   if (!foodItem) {
-    throw new AppError('Food item not found', 404);
+    throw new AppError('Food item not found',404);
   }
   return foodItem;
 };
 
-const markFoodItemUnavailable = async (id) => {
-  const foodItem = await FoodItem.findByIdAndUpdate(
-    id,
-    { isAvailable: false },
-    { new: true }
-  );
+const markFoodItemUnavailable = async (foodItemId) => {
+  const foodItem = await FoodItem.findByIdAndUpdate(foodItemId, { isAvailable: false }, { new: true });
   if (!foodItem) {
-    throw new AppError('Food item not found', 404);
+    throw new AppError('Food item not found',404);
   }
   return foodItem;
 };
+
 
 const manageOrder = async (orderId, status) => {
-  const order = await Order.findByIdAndUpdate(
-    orderId,
-    { status },
-    { new: true, runValidators: true }
-  );
+  const order = await Order.findByIdAndUpdate(orderId, { status }, { new: true });
   if (!order) {
-    throw new AppError('Order not found', 404);
+    throw new Error('Order not found');
   }
   return order;
 };
 
+
 const getProductsByCategory = async (categoryId) => {
-  const products = await FoodItem.find({ categoryId });
-  if(!products)throw new AppError('Product not found by categoryId. Please and try again', 404)
-  return products;
+  const foodItems = await FoodItem.find({ categoryId });
+  if (!foodItems) {
+    throw new AppError('Food items not found',404);
+  }
+  return foodItems;
 };
+
 
 const findProductByName = async (name) => {
-  const products = await FoodItem.find({
-    name: { $regex: name, $options: 'i' },
-  });
-  if(!products){
-    throw new AppError('Product not found', 404);
+  if (!name) {
+    throw new AppError('Name is required',400);
   }
-  return products;
+  const foodItems = await FoodItem.find({ name: { $regex: name, $options: 'i' } });
+  if (!foodItems) {
+    throw new AppError('Food items not found',404);
+  }
+  return foodItems;
 };
 
-const removeProduct = async (id) => {
-  const foodItem = await FoodItem.findByIdAndDelete(id);
+
+const removeProduct = async (foodItemId) => {
+  const foodItem = await FoodItem.findByIdAndDelete(foodItemId);
   if (!foodItem) {
-    throw new AppError('Food item not found', 404);
+    throw new AppError('Food item not found',404);
   }
-  return { message: 'Food item removed successfully' };
+  return foodItem;
 };
+
 
 const getAllOrders = async () => {
-  const orders = await Order.find().populate('items.foodItemId').populate('customerId');
-  return orders;
+  return Order.find().populate('customerId').populate('items.foodItemId');
 };
 
 module.exports = {

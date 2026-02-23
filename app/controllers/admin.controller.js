@@ -13,38 +13,38 @@ const addFoodItem = catchAsync(async (req, res) => {
 });
 
 const updateFoodItem = catchAsync(async (req, res) => {
-  const foodItem = await adminService.updateFoodItem(req.params.id, req.body);
-  res.status(200).json({ status: 'success', data: foodItem });
+  const foodItem = await adminService.updateFoodItem(req.params.foodItemId, req.body);
+  res.status(201).json({ status: 'success', data: foodItem });
 });
 
 const markFoodItemUnavailable = catchAsync(async (req, res) => {
-  const foodItem = await adminService.markFoodItemUnavailable(req.params.id);
-  res.status(200).json({ status: 'success', data: foodItem });
+  const foodItem = await adminService.markFoodItemUnavailable(req.params.foodItemId);
+  res.status(201).json({ status: 'success', data: foodItem });
 });
 
 const manageOrder = catchAsync(async (req, res) => {
   const order = await adminService.manageOrder(req.params.orderId, req.body.status);
-  res.status(200).json({ status: 'success', data: order });
+  res.status(201).json({ status: 'success', data: order });
 });
 
 const getProductsByCategory = catchAsync(async (req, res) => {
   const products = await adminService.getProductsByCategory(req.params.categoryId);
-  res.status(200).json({ status: 'success', data: products });
+  res.status(201).json({ status: 'success', data: products });
 });
 
 const findProductByName = catchAsync(async (req, res) => {
   const products = await adminService.findProductByName(req.query.name);
-  res.status(200).json({ status: 'success', data: products });
+  res.status(201).json({ status: 'success', data: products });
 });
 
 const removeProduct = catchAsync(async (req, res) => {
-  const result = await adminService.removeProduct(req.params.id);
-  res.status(200).json({ status: 'success', data: result });
+  await adminService.removeProduct(req.params.foodItemId);
+  res.status(201).json({ status: 'success', message: 'Product removed successfully' });
 });
 
 const getAllOrders = catchAsync(async (req, res) => {
   const orders = await adminService.getAllOrders();
-  res.status(200).json({ status: 'success', data: orders });
+  res.status(201).json({ status: 'success', data: orders });
 });
 
 module.exports = {
