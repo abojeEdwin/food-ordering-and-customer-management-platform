@@ -2,7 +2,7 @@
 const nodemailer = require('nodemailer');
 
 const sendEmail = async (options) => {
-  // In development, log email to console instead of sending
+
   if (process.env.NODE_ENV === 'development') {
     console.log('--- MOCK EMAIL SENT ---');
     console.log(`To: ${options.to}`);
@@ -12,7 +12,7 @@ const sendEmail = async (options) => {
     return;
   }
 
-  // In production, use a real email transporter
+
   const transporter = nodemailer.createTransport({
     host: process.env.EMAIL_HOST,
     port: process.env.EMAIL_PORT,
