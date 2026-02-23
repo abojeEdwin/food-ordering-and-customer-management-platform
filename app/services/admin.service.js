@@ -29,7 +29,7 @@ const addFoodItem = async (foodItemBody) => {
 const updateFoodItem = async (foodItemId, updateBody) => {
   const foodItem = await FoodItem.findByIdAndUpdate(foodItemId, updateBody, { new: true });
   if (!foodItem) {
-    throw new AppError('Food item not found',404);
+    throw new AppError('Food item not found. Try adding the food item ',404);
   }
   return foodItem;
 };
@@ -78,7 +78,6 @@ const removeProduct = async (foodItemId) => {
   if (!foodItem) {
     throw new AppError('Food item not found',404);
   }
-  return foodItem;
 };
 
 
