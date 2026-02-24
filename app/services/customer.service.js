@@ -17,6 +17,10 @@ const browseFood = async (query) => {
 };
 
 const addToCart = async (customerId, foodItemId, quantity) => {
+  if (!quantity || quantity < 1) {
+    throw new AppError('Quantity must be at least 1', 400);
+  }
+
   const foodItem = await FoodItem.findById(foodItemId);
   if (!foodItem) {
     throw new AppError('Food item not found', 404);
@@ -92,6 +96,10 @@ const placeOrder = async (customerId, { paymentMethod, billingAddress }) => {
       quantity: item.quantity,
       price: foodItem.price
     });
+  }
+
+  if (orderItems.length === 0) {
+    throw new AppError('No valid items in cart to order', 400);
   }
 
   const order = await Order.create({
