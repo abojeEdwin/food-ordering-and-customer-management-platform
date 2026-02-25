@@ -93,7 +93,6 @@ const placeOrder = async (customerId, { paymentMethod, billingAddress }) => {
         continue;
     }
 
-    // Check if the item is still available
     if (!foodItem.isAvailable) {
       unavailableItems.push(foodItem.name);
       continue; 
