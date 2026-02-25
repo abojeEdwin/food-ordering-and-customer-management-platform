@@ -8,7 +8,7 @@ router.post('/categories', adminController.createCategory);
 router.post('/food-items', adminController.addFoodItem);
 router.patch('/food-items/:foodItemId', adminController.updateFoodItem);
 router.patch('/food-items/:foodItemId/unavailable', adminController.markFoodItemUnavailable);
-router.patch('/orders/:orderId', adminController.manageOrder);
+router.patch('/orders/:orderId', adminController.processOrder);
 router.get('/categories/:categoryId/products', adminController.getProductsByCategory);
 router.get('/products', adminController.findProductByName);
 router.delete('/food-items/:foodItemId', adminController.removeProduct);

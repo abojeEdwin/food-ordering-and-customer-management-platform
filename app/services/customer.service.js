@@ -84,18 +84,31 @@ const placeOrder = async (customerId, { paymentMethod, billingAddress }) => {
 
   let totalPrice = 0;
   const orderItems = [];
+  const unavailableItems = [];
 
   for (const item of cart.foodItems) {
     const foodItem = item.foodItemId;
+    
     if (!foodItem) {
         continue;
     }
+
+    // Check if the item is still available
+    if (!foodItem.isAvailable) {
+      unavailableItems.push(foodItem.name);
+      continue; 
+    }
+
     totalPrice += foodItem.price * item.quantity;
     orderItems.push({
       foodItemId: foodItem._id,
       quantity: item.quantity,
       price: foodItem.price
     });
+  }
+
+  if (unavailableItems.length > 0) {
+    throw new AppError(`The following items are no longer available: ${unavailableItems.join(', ')}. Please remove them from your cart.`, 400);
   }
 
   if (orderItems.length === 0) {
@@ -108,7 +121,8 @@ const placeOrder = async (customerId, { paymentMethod, billingAddress }) => {
     totalPrice,
     paymentMethod,
     billingAddress,
-    status: 'pending'
+    status: 'pending',
+    paymentStatus: 'pending'
   });
 
   cart.foodItems = [];
@@ -117,11 +131,59 @@ const placeOrder = async (customerId, { paymentMethod, billingAddress }) => {
   return order;
 };
 
+const cancelOrder = async (customerId, orderId) => {
+  const order = await Order.findOne({ _id: orderId, customerId });
+
+  if (!order) {
+    throw new AppError('Order not found', 404);
+  }
+
+  if (order.status !== 'pending') {
+    throw new AppError('Order cannot be cancelled at this stage', 400);
+  }
+
+  order.status = 'cancelled';
+  await order.save();
+  return order;
+};
+
+const simulatePayment = async (customerId, orderId) => {
+  const order = await Order.findOne({ _id: orderId, customerId });
+
+  if (!order) {
+    throw new AppError('Order not found', 404);
+  }
+
+  if (order.status === 'cancelled') {
+      throw new AppError('Cannot pay for a cancelled order', 400);
+  }
+  
+  if (order.paymentStatus === 'paid') {
+    throw new AppError('Order is already paid', 400);
+  }
+
+  // Simulate payment processing (90% success rate)
+  const isSuccess = Math.random() < 0.9; 
+
+  if (isSuccess) {
+    order.paymentStatus = 'paid';
+    order.status = 'confirmed';
+    await order.save();
+    return { success: true, message: 'Payment successful', order };
+  } else {
+    order.paymentStatus = 'failed';
+    await order.save();
+    throw new AppError('Payment failed. Please try again.', 400);
+  }
+};
+
 module.exports = {
   browseFood,
   addToCart,
   viewCart,
   removeFromCart,
   clearCart,
-  placeOrder
+  placeOrder,
+  cancelOrder,
+  simulatePayment
 };

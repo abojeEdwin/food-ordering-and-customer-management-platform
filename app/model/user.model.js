@@ -15,6 +15,7 @@ const userSchema = new Schema({
     required: true,
     select: false,
   },
+  passwordChangedAt: Date,
   role: {
     type: String,
     enum: ['customer', 'admin'],
@@ -34,6 +35,14 @@ const userSchema = new Schema({
     type: String,
   },
 }, { timestamps: true });
+
+userSchema.methods.changedPasswordAfter = function (JWTTimestamp) {
+  if (this.passwordChangedAt) {
+    const changedTimestamp = parseInt(this.passwordChangedAt.getTime() / 1000, 10);
+    return JWTTimestamp < changedTimestamp;
+  }
+  return false;
+};
 
 const User = mongoose.model('User', userSchema);
 

@@ -11,6 +11,7 @@ const AppError = require('./utils/appError');
 const errorHandler = require('./middleware/error.middleware');
 const authRoutes = require('./routes/auth.routes');
 const adminRoutes = require('./routes/admin.routes');
+const customerRoutes = require('./routes/customer.routes');
 
 const app = express();
 
@@ -35,6 +36,7 @@ app.use(compression());
 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/customer', customerRoutes);
 
 app.all('*', (req, res, next) => {
   next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));

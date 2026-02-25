@@ -34,11 +34,25 @@ const placeOrder = catchAsync(async (req, res) => {
   res.status(201).json({ status: 'success', data: order });
 });
 
+const cancelOrder = catchAsync(async (req, res) => {
+  const { orderId } = req.params;
+  const order = await customerService.cancelOrder(req.user.id, orderId);
+  res.status(200).json({ status: 'success', data: order });
+});
+
+const simulatePayment = catchAsync(async (req, res) => {
+  const { orderId } = req.params;
+  const result = await customerService.simulatePayment(req.user.id, orderId);
+  res.status(200).json({ status: 'success', data: result });
+});
+
 module.exports = {
   browseFood,
   addToCart,
   viewCart,
   removeFromCart,
   clearCart,
-  placeOrder
+  placeOrder,
+  cancelOrder,
+  simulatePayment
 };

@@ -42,12 +42,32 @@ const markFoodItemUnavailable = async (foodItemId) => {
   return foodItem;
 };
 
-
-const manageOrder = async (orderId, status) => {
-  const order = await Order.findByIdAndUpdate(orderId, { status }, { new: true });
+const processOrder = async (orderId, newStatus) => {
+  const order = await Order.findById(orderId);
   if (!order) {
-    throw new Error('Order not found');
+    throw new AppError('Order not found', 404);
   }
+
+  const currentStatus = order.status;
+  const allowedTransitions = {
+    pending: ['confirmed', 'cancelled'],
+    confirmed: ['preparing', 'cancelled'],
+    preparing: ['out_for_delivery'],
+    out_for_delivery: ['delivered'],
+    delivered: [],
+    cancelled: [],
+  };
+
+  if (!allowedTransitions[currentStatus] || !allowedTransitions[currentStatus].includes(newStatus)) {
+    throw new AppError(`Invalid status transition from ${currentStatus} to ${newStatus}`, 400);
+  }
+
+  order.status = newStatus;
+  if (newStatus === 'delivered') {
+    order.paymentStatus = 'paid';
+  }
+
+  await order.save();
   return order;
 };
 
@@ -90,7 +110,7 @@ module.exports = {
   addFoodItem,
   updateFoodItem,
   markFoodItemUnavailable,
-  manageOrder,
+  processOrder,
   getProductsByCategory,
   findProductByName,
   removeProduct,
