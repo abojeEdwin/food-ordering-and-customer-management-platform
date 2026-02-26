@@ -10,13 +10,13 @@ const router = express.Router();
 
 router.get('/food', customerController.browseFood);
 
-router.post('/cart',globalLimiter ,customerController.addToCart);
-router.get('/cart',globalLimiter ,customerController.viewCart);
-router.delete('/cart/items/:foodItemId', globalLimiter,customerController.removeFromCart);
-router.delete('/cart', globalLimiter,customerController.clearCart);
+router.post('/cart',customerController.addToCart);
+router.get('/cart',customerController.viewCart);
+router.delete('/cart/items/:foodItemId',customerController.removeFromCart);
+router.delete('/cart', customerController.clearCart);
 
-router.post('/orders',globalLimiter ,customerController.placeOrder);
-router.patch('/orders/:orderId/cancel',globalLimiter ,customerController.cancelOrder);
-router.post('/orders/:orderId/pay',globalLimiter ,customerController.simulatePayment);
+router.post('/orders',customerController.placeOrder);
+router.patch('/orders/:orderId/cancel',customerController.cancelOrder);
+router.post('/orders/:orderId/pay',customerController.simulatePayment);
 
 module.exports = router;
