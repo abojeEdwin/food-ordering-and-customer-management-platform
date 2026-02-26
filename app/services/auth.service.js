@@ -107,7 +107,6 @@ const login = async (email, password) => {
     isVerified: user.isVerified,
     isActive: user.isActive,
   };
-
   return { user: userResponse, token };
 };
 
