@@ -54,10 +54,13 @@ JWT_SECRET=your_jwt_secret
 JWT_EXPIRES_IN=1d
 ADMIN_EMAIL=admin@chukskitchen.com
 ADMIN_PASSWORD=admin123
-EMAIL_HOST=smtp.mailtrap.io
-EMAIL_PORT=2525
-EMAIL_USERNAME=your_mailtrap_username
-EMAIL_PASSWORD=your_mailtrap_password
+EMAIL_HOST=smtp.mailjet.com
+EMAIL_PORT=587
+EMAIL_SECURE=false
+EMAIL_USERNAME=your_mailjet_api_key
+EMAIL_PASSWORD=your_mailjet_secret_key
+EMAIL_FROM_NAME=Chuks Kitchen
+EMAIL_FROM_ADDRESS=hello@yourdomain.com
 ```
 
 ## Run With Docker

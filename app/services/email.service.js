@@ -1,35 +1,45 @@
 
-const nodemailer = require('nodemailer');
+const mailJet = require('node-mailjet').apiConnect(
+  process.env.EMAIL_USERNAME,
+  process.env.EMAIL_PASSWORD
+);
 
 const sendEmail = async (options) => {
 
-  if (process.env.NODE_ENV === 'development') {
-    console.log('--- MOCK EMAIL SENT ---');
-    console.log(`To: ${options.to}`);
-    console.log(`Subject: ${options.subject}`);
-    console.log(`Text: ${options.text}`);
-    console.log('-----------------------');
-    return;
-  }
+  const fromEmail =
+    process.env.EMAIL_FROM_ADDRESS || process.env.EMAIL_FROM_EMAIL;
+  const fromName = process.env.EMAIL_FROM_NAME;
 
-
-  const transporter = nodemailer.createTransport({
-    host: process.env.EMAIL_HOST,
-    port: process.env.EMAIL_PORT,
-    auth: {
-      user: process.env.EMAIL_USERNAME,
-      pass: process.env.EMAIL_PASSWORD,
-    },
+  const request = mailJet.post('send', { version: 'v3.1' }).request({
+    Messages: [
+      {
+        From: {
+          Email: fromEmail,
+          Name: fromName,
+        },
+        To: [
+          {
+            Email: options.to,
+            Name: options.to,
+          },
+        ],
+        Subject: options.subject,
+        TextPart: options.text,
+      },
+    ],
   });
 
-  const mailOptions = {
-    from: 'Chuks Kitchen <hello@chukskitchen.com>',
-    to: options.to,
-    subject: options.subject,
-    text: options.text,
-  };
-
-  await transporter.sendMail(mailOptions);
+  try {
+    const result = await request;
+    console.log(result.body);
+  } catch (error) {
+    console.error('Email send failed:', {
+      statusCode: error.statusCode,
+      message: error.message,
+      error: error.ErrorMessage || error.error,
+    });
+    throw error;
+  }
 };
 
 module.exports = { sendEmail };
