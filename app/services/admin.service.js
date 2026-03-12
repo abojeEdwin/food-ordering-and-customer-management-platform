@@ -18,7 +18,7 @@ const addFoodItem = async (foodItemBody) => {
   if (!category) {
     throw new AppError('Category not found', 404);
   }
-  const existingFoodItem = await FoodItem.findOne({ name: foodItemBody.name, categoryId: foodItemBody.categoryId });
+  const existingFoodItem = await FoodItem.findOne({ name: foodItemBody.name, categoryName: foodItemBody.categoryName });
   if (existingFoodItem) {
     throw new AppError('Food item already exists', 400);
   }
