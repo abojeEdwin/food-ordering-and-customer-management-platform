@@ -14,7 +14,7 @@ const createCategory = async (categoryBody) => {
 };
 
 const addFoodItem = async (foodItemBody) => {
-  const category = await Category.findById(foodItemBody.categoryId);
+  const category = await Category.findOne(foodItemBody.categoryName);
   if (!category) {
     throw new AppError('Category not found', 404);
   }
