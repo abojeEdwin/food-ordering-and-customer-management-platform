@@ -5,10 +5,11 @@ Backend API for a food ordering system with customer authentication (OTP verific
 ## Tech Stack
 - Node.js + Express
 - MongoDB + Mongoose
-- Redis (configured, not currently wired into business logic)
+- Redis (cache, rate limiting store, OTP TTL, pub/sub, streams)
+- BullMQ (background jobs)
 - Joi (request validation for auth routes)
 - JWT authentication
-- Nodemailer (OTP email)
+- Mailjet (OTP email)
 - Docker + Docker Compose
 
 ## Implemented Features
@@ -61,6 +62,12 @@ EMAIL_USERNAME=your_mailjet_api_key
 EMAIL_PASSWORD=your_mailjet_secret_key
 EMAIL_FROM_NAME=Chuks Kitchen
 EMAIL_FROM_ADDRESS=hello@yourdomain.com
+REDIS_URL=redis://localhost:6379
+CACHE_TTL_SECONDS=60
+OTP_TTL_SECONDS=600
+EMAIL_QUEUE_ENABLED=false
+ORDER_QUEUE_ENABLED=false
+REDIS_SUBSCRIBER_ENABLED=false
 ```
 
 ## Run With Docker
@@ -83,6 +90,13 @@ cd app
 npm install
 npm run dev
 ```
+4. (Optional) start workers:
+
+```bash
+cd app
+npm run worker:email
+npm run worker:order
+```
 
 ## API Endpoints
 Base path: `/api/v1`
@@ -92,6 +106,7 @@ Base path: `/api/v1`
 - `POST /auth/verify-otp` - verify account with OTP
 - `POST /auth/login` - login and receive JWT
 - `POST /auth/resend-otp` - resend OTP
+- `POST /auth/logout` - logout and invalidate token
 
 ### Admin
 - `POST /admin/categories` - create category
@@ -115,10 +130,9 @@ Base path: `/api/v1`
 - `POST /customer/orders/:orderId/pay` - simulate payment
 
 ## Notes About Current Implementation
-- OTP email in `development` is logged to server console (mock email behavior).
 - `admin` and `customer` routes are currently not protected by auth middleware in routing.
 - Customer controllers expect `req.user.id`; until auth middleware is re-enabled on customer routes, those endpoints will fail at runtime.
-- Redis client exists in `app/config/redis.js` but is not imported into request flow yet.
+- Redis is used for rate limiting, caching, OTP TTLs, order events (pub/sub + streams), and queues.
 - `npm run seed:admin` references `./config/config.env` in code, but that file does not exist in this repository by default.
 
 ## Architecture Assets
