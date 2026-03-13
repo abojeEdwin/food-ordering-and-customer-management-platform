@@ -1,13 +1,29 @@
 
 const adminService = require('../services/admin.service');
 const catchAsync = require('../utils/catchAsync');
+const AppError = require('../utils/appError');
+const { uploadImage } = require('../services/s3.service');
 
 const createCategory = catchAsync(async (req, res) => {
+  if (req.file) {
+    const { url } = await uploadImage(req.file, 'categories');
+    req.body.imageUrl = url;
+  }
+
+  if (!req.body.imageUrl) {
+    throw new AppError('Category image is required', 400);
+  }
+
   const category = await adminService.createCategory(req.body);
   res.status(201).json({ status: 'success', data: category });
 });
 
 const addFoodItem = catchAsync(async (req, res) => {
+  if (req.file) {
+    const { url } = await uploadImage(req.file, 'food-items');
+    req.body.imageUrl = url;
+  }
+
   const foodItem = await adminService.addFoodItem(req.body);
   res.status(201).json({ status: 'success', data: foodItem });
 });

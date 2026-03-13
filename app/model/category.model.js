@@ -12,6 +12,11 @@ const categorySchema = new mongoose.Schema({
     type: String,
     trim: true,
   },
+  imageUrl: {
+    type: String,
+    required: true,
+    trim: true,
+  }
 }, { timestamps: true });
 
 const Category = mongoose.model('Category', categorySchema);

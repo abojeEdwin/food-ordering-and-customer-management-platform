@@ -40,7 +40,7 @@ const foodItemSchema = new mongoose.Schema({
   },
 }, { timestamps: true });
 
-foodItemSchema.index({ name: 1, categoryId: 1 });
+foodItemSchema.index({ name: 1, categoryName: 1 });
 
 const FoodItem = mongoose.model('FoodItem', foodItemSchema);
 

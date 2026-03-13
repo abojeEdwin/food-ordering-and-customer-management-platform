@@ -5,6 +5,7 @@ Joi.objectId = require('joi-objectid')(Joi);
 const createCategorySchema = Joi.object({
   name: Joi.string().required().trim(),
   description: Joi.string().trim().allow(''),
+  imageUrl: Joi.string().uri().trim().allow(''),
 });
 
 const addFoodItemSchema = Joi.object({
@@ -15,7 +16,7 @@ const addFoodItemSchema = Joi.object({
   isAvailable: Joi.boolean().default(true),
   specialInstruction: Joi.string().trim().allow(''),
   quantity: Joi.number().integer().min(0).default(1),
-  categoryId: Joi.objectId().required(),
+  categoryName: Joi.objectId().required(),
 });
 
 const updateFoodItemSchema = Joi.object({
@@ -26,7 +27,7 @@ const updateFoodItemSchema = Joi.object({
   isAvailable: Joi.boolean(),
   specialInstruction: Joi.string().trim().allow(''),
   quantity: Joi.number().integer().min(0),
-  categoryId: Joi.objectId(),
+  categoryName: Joi.objectId().required(),
 }).min(1);
 
 const manageOrderSchema = Joi.object({
@@ -34,7 +35,7 @@ const manageOrderSchema = Joi.object({
 });
 
 const getProductsByCategorySchema = Joi.object({
-  categoryId: Joi.objectId().required(),
+  categoryName: Joi.objectId().required(),
 });
 
 const findProductByNameSchema = Joi.object({
