@@ -2,30 +2,84 @@
 const adminService = require('../services/admin.service');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
-const { uploadImage } = require('../services/s3.service');
+const { uploadImage, deleteObject } = require('../services/s3.service');
+const Category = require('../model/category.model');
+const FoodItem = require('../model/foodItem.model');
 
 const createCategory = catchAsync(async (req, res) => {
-  if (req.file) {
-    const { url } = await uploadImage(req.file, 'categories');
-    req.body.imageUrl = url;
+  if (!req.body.name) {
+    throw new AppError('Category name is required', 400);
   }
 
-  if (!req.body.imageUrl) {
-    throw new AppError('Category image is required', 400);
+  const existingCategory = await Category.findOne({ name: req.body.name });
+  if (existingCategory) {
+    throw new AppError('Category already exists', 400);
   }
 
-  const category = await adminService.createCategory(req.body);
-  res.status(201).json({ status: 'success', data: category });
+  let uploadedKey;
+  try {
+    if (req.file) {
+      const { url, key } = await uploadImage(req.file, 'categories');
+      req.body.imageUrl = url;
+      uploadedKey = key;
+    }
+
+    if (!req.body.imageUrl) {
+      throw new AppError('Category image is required', 400);
+    }
+
+    const category = await adminService.createCategory(req.body);
+    res.status(201).json({ status: 'success', data: category });
+  } catch (err) {
+    if (uploadedKey) {
+      try {
+        await deleteObject(uploadedKey);
+      } catch (cleanupError) {
+        console.log('S3 cleanup failed:', cleanupError.message);
+      }
+    }
+    throw err;
+  }
 });
 
 const addFoodItem = catchAsync(async (req, res) => {
-  if (req.file) {
-    const { url } = await uploadImage(req.file, 'food-items');
-    req.body.imageUrl = url;
+  if (!req.body.name || !req.body.categoryName) {
+    throw new AppError('Food item name and categoryName are required', 400);
   }
 
-  const foodItem = await adminService.addFoodItem(req.body);
-  res.status(201).json({ status: 'success', data: foodItem });
+  const category = await Category.findOne({ name: req.body.categoryName });
+  if (!category) {
+    throw new AppError('Category not found', 404);
+  }
+
+  const existingFoodItem = await FoodItem.findOne({
+    name: req.body.name,
+    categoryName: req.body.categoryName,
+  });
+  if (existingFoodItem) {
+    throw new AppError('Food item already exists', 400);
+  }
+
+  let uploadedKey;
+  try {
+    if (req.file) {
+      const { url, key } = await uploadImage(req.file, 'food-items');
+      req.body.imageUrl = url;
+      uploadedKey = key;
+    }
+
+    const foodItem = await adminService.addFoodItem(req.body);
+    res.status(201).json({ status: 'success', data: foodItem });
+  } catch (err) {
+    if (uploadedKey) {
+      try {
+        await deleteObject(uploadedKey);
+      } catch (cleanupError) {
+        console.log('S3 cleanup failed:', cleanupError.message);
+      }
+    }
+    throw err;
+  }
 });
 
 const updateFoodItem = catchAsync(async (req, res) => {

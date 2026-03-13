@@ -1,6 +1,6 @@
 const path = require('path');
 const crypto = require('crypto');
-const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const AppError = require('../utils/appError');
 
 const getS3Client = () => {
@@ -63,6 +63,26 @@ const uploadImage = async (file, folder) => {
   };
 };
 
+const deleteObject = async (key) => {
+  if (!key) {
+    return;
+  }
+
+  const bucket = process.env.S3_BUCKET_NAME;
+  if (!bucket) {
+    throw new AppError('S3 bucket not configured', 500);
+  }
+
+  const s3 = getS3Client();
+  const command = new DeleteObjectCommand({
+    Bucket: bucket,
+    Key: key,
+  });
+
+  await s3.send(command);
+};
+
 module.exports = {
   uploadImage,
+  deleteObject,
 };
