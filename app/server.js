@@ -1,6 +1,7 @@
 
 const dotenv = require('dotenv');
 const connectDB = require('./config/db');
+const { startOrderStatusSubscriber } = require('./subscribers/orderStatus.subscriber');
 
 
 process.on('uncaughtException', (err) => {
@@ -19,6 +20,12 @@ const port = process.env.PORT || 3000;
 const server = app.listen(port, () => {
   console.log(`App running on port ${port}...`);
 });
+
+if (process.env.REDIS_SUBSCRIBER_ENABLED === 'true') {
+  startOrderStatusSubscriber().catch((err) => {
+    console.log('Order status subscriber failed:', err.message);
+  });
+}
 
 process.on('unhandledRejection', (err) => {
   console.log('UNHANDLED REJECTION! Shutting down...');

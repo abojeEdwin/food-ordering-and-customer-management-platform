@@ -1,5 +1,7 @@
 
 const rateLimit = require('express-rate-limit');
+const RedisStore = require('rate-limit-redis');
+const { redisClient } = require('../config/redis');
 
 const globalLimiter = rateLimit({
   max: 100,
@@ -7,6 +9,9 @@ const globalLimiter = rateLimit({
   message: 'Too many requests from this IP, please try again in an hour!',
   standardHeaders: true,
   legacyHeaders: false,
+  store: new RedisStore({
+    sendCommand: (...args) => redisClient.sendCommand(args),
+  }),
 });
 
 const loginLimiter = rateLimit({
@@ -15,6 +20,9 @@ const loginLimiter = rateLimit({
   message: 'Too many login attempts from this IP, please try again in 15 minutes!',
   standardHeaders: true,
   legacyHeaders: false,
+  store: new RedisStore({
+    sendCommand: (...args) => redisClient.sendCommand(args),
+  }),
 });
 
 module.exports = {

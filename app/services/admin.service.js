@@ -3,6 +3,8 @@ const Category = require('../model/category.model');
 const FoodItem = require('../model/foodItem.model');
 const Order = require('../model/order.model');
 const AppError = require("../utils/appError");
+const { buildKey, getJson, setJson, delByPattern } = require('./cache.service');
+const { appendOrderEvent, publishOrderStatus, enqueueOrderNotification } = require('./orderEvents.service');
 
 
 const createCategory = async (categoryBody) => {
@@ -22,7 +24,9 @@ const addFoodItem = async (foodItemBody) => {
   if (existingFoodItem) {
     throw new AppError('Food item already exists', 400);
   }
-  return FoodItem.create(foodItemBody);
+  const created = await FoodItem.create(foodItemBody);
+  await delByPattern(buildKey('food', '*'));
+  return created;
 };
 
 
@@ -31,6 +35,7 @@ const updateFoodItem = async (foodItemId, updateBody) => {
   if (!foodItem) {
     throw new AppError('Food item not found. Try adding the food item ',404);
   }
+  await delByPattern(buildKey('food', '*'));
   return foodItem;
 };
 
@@ -39,6 +44,7 @@ const markFoodItemUnavailable = async (foodItemId) => {
   if (!foodItem) {
     throw new AppError('Food item not found',404);
   }
+  await delByPattern(buildKey('food', '*'));
   return foodItem;
 };
 
@@ -68,15 +74,23 @@ const processOrder = async (orderId, newStatus) => {
   }
 
   await order.save();
+  await appendOrderEvent('status_changed', order, { source: 'admin' });
+  await publishOrderStatus('status_changed', order, { source: 'admin' });
+  await enqueueOrderNotification(order);
   return order;
 };
 
 
 const getProductsByCategory = async (categoryId) => {
+  const cacheKey = buildKey('food', 'category', categoryId);
+  const cached = await getJson(cacheKey);
+  if (cached) return cached;
+
   const foodItems = await FoodItem.find({ categoryId });
   if (!foodItems) {
     throw new AppError('Food items not found',404);
   }
+  await setJson(cacheKey, foodItems);
   return foodItems;
 };
 
@@ -85,10 +99,15 @@ const findProductByName = async (name) => {
   if (!name) {
     throw new AppError('Name is required',400);
   }
+  const cacheKey = buildKey('food', 'search', `name=${name}`);
+  const cached = await getJson(cacheKey);
+  if (cached) return cached;
+
   const foodItems = await FoodItem.find({ name: { $regex: name, $options: 'i' } });
   if (!foodItems) {
     throw new AppError('Food items not found',404);
   }
+  await setJson(cacheKey, foodItems);
   return foodItems;
 };
 
@@ -98,6 +117,7 @@ const removeProduct = async (foodItemId) => {
   if (!foodItem) {
     throw new AppError('Food item not found',404);
   }
+  await delByPattern(buildKey('food', '*'));
 };
 
 
@@ -116,4 +136,3 @@ module.exports = {
   removeProduct,
   getAllOrders,
 };
-
