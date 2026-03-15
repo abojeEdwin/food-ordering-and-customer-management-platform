@@ -37,9 +37,16 @@ const resendOtp = catchAsync(async (req, res) => {
   });
 });
 
+const logout = catchAsync(async (req, res) => {
+  const token = req.token;
+  const { message } = await authService.logout(token);
+  res.status(200).json({ status: 'success', message });
+});
+
 module.exports = {
   signup,
   verifyOtp,
   login,
   resendOtp,
+  logout,
 };

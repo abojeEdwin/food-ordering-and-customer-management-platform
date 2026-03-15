@@ -2,6 +2,8 @@ const Cart = require('../model/cart.model');
 const FoodItem = require('../model/foodItem.model');
 const Order = require('../model/order.model');
 const AppError = require("../utils/appError");
+const { buildKey, getJson, setJson, delByPattern } = require('./cache.service');
+const { appendOrderEvent, publishOrderStatus, enqueueOrderNotification } = require('./orderEvents.service');
 
 const browseFood = async (query) => {
   const filter = { isAvailable: true };
@@ -12,7 +14,17 @@ const browseFood = async (query) => {
     filter.categoryName = query.category;
   }
   
+  const cacheKey = buildKey(
+    'food',
+    'browse',
+    `search=${query.search || ''}`,
+    `category=${query.category || ''}`
+  );
+  const cached = await getJson(cacheKey);
+  if (cached) return cached;
+
   const foodItems = await FoodItem.find(filter);
+  await setJson(cacheKey, foodItems);
   return foodItems;
 };
 
@@ -127,6 +139,11 @@ const placeOrder = async (customerId, { paymentMethod, billingAddress }) => {
   cart.foodItems = [];
   await cart.save();
 
+  await delByPattern(buildKey('cart', customerId, '*'));
+  await appendOrderEvent('order_created', order, { source: 'customer' });
+  await publishOrderStatus('order_created', order, { source: 'customer' });
+  await enqueueOrderNotification(order);
+
   return order;
 };
 
@@ -143,6 +160,9 @@ const cancelOrder = async (customerId, orderId) => {
 
   order.status = 'cancelled';
   await order.save();
+  await appendOrderEvent('order_cancelled', order, { source: 'customer' });
+  await publishOrderStatus('order_cancelled', order, { source: 'customer' });
+  await enqueueOrderNotification(order);
   return order;
 };
 
@@ -168,10 +188,16 @@ const simulatePayment = async (customerId, orderId) => {
     order.paymentStatus = 'paid';
     order.status = 'confirmed';
     await order.save();
+    await appendOrderEvent('payment_success', order, { source: 'customer' });
+    await publishOrderStatus('payment_success', order, { source: 'customer' });
+    await enqueueOrderNotification(order);
     return { success: true, message: 'Payment successful', order };
   } else {
     order.paymentStatus = 'failed';
     await order.save();
+    await appendOrderEvent('payment_failed', order, { source: 'customer' });
+    await publishOrderStatus('payment_failed', order, { source: 'customer' });
+    await enqueueOrderNotification(order);
     throw new AppError('Payment failed. Please try again.', 400);
   }
 };

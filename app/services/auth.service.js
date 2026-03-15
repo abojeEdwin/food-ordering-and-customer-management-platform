@@ -5,6 +5,11 @@ const { generateOtp, verifyOtp } = require('../utils/otp');
 const { sendEmail } = require('./email.service');
 const { generateToken } = require('../utils/jwt');
 const bcrypt = require('bcryptjs');
+const { redisClient } = require('../config/redis');
+const { blacklistToken } = require('./token.service');
+
+const OTP_TTL_SECONDS = Number(process.env.OTP_TTL_SECONDS || 600);
+const otpKey = (email) => `otp:${email.toLowerCase()}`;
 
 const signup = async (userData) => {
   const { email, password, phoneNumber } = userData;
@@ -15,18 +20,17 @@ const signup = async (userData) => {
   }
 
   const hashedPassword = await bcrypt.hash(password, 12);
-  const { otp, expires } = generateOtp();
+  const { otp } = generateOtp();
 
   const newUser = await Customer.create({
     email,
     password: hashedPassword,
     phoneNumber,
-    otp,
-    otpExpires: expires,
     role: 'customer',
   });
 
   try {
+    await redisClient.set(otpKey(email), otp, { EX: OTP_TTL_SECONDS });
     await sendEmail({
       to: newUser.email,
       subject: 'Verify Your Account',
@@ -60,7 +64,10 @@ const verifyOtpService = async (email, otp) => {
     throw new AppError('Account already verified.', 400);
   }
 
-  const isValidOtp = verifyOtp(otp, user.otp, user.otpExpires);
+  const cachedOtp = await redisClient.get(otpKey(email));
+  const isValidOtp = cachedOtp
+    ? cachedOtp === otp
+    : verifyOtp(otp, user.otp, user.otpExpires);
 
   if (!isValidOtp) {
     throw new AppError('Invalid or expired OTP.', 400);
@@ -71,6 +78,7 @@ const verifyOtpService = async (email, otp) => {
   user.otp = undefined;
   user.otpExpires = undefined;
   await user.save();
+  await redisClient.del(otpKey(email));
 
   return {
     id: user._id,
@@ -121,10 +129,8 @@ const resendOtp = async (email) => {
     throw new AppError('Account already verified.', 400);
   }
 
-  const { otp, expires } = generateOtp();
-  user.otp = otp;
-  user.otpExpires = expires;
-  await user.save();
+  const { otp } = generateOtp();
+  await redisClient.set(otpKey(email), otp, { EX: OTP_TTL_SECONDS });
 
   try {
     await sendEmail({
@@ -144,4 +150,8 @@ module.exports = {
   verifyOtp: verifyOtpService,
   login,
   resendOtp,
+  logout: async (token) => {
+    await blacklistToken(token);
+    return { message: 'Logged out successfully.' };
+  },
 };
