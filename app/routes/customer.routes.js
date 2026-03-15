@@ -2,11 +2,11 @@
 const express = require('express');
 const customerController = require('../controllers/customer.controller');
 const {globalLimiter} = require("../middleware/rateLimit.middleware");
-//const { protect, restrictTo } = require('../middleware/auth.middleware');
+const { protect, restrictTo } = require('../middleware/auth.middleware');
 
 const router = express.Router();
 
-//router.use(protect, restrictTo('customer'));
+router.use(protect, restrictTo('customer'));
 
 router.get('/food', customerController.browseFood);
 

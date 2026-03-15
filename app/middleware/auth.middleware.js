@@ -26,6 +26,9 @@ const protect = catchAsync(async (req, res, next) => {
   if (!currentUser) {
     return next(new AppError('The user belonging to this token does no longer exist.', 401));
   }
+  if(currentUser.isVerified === false){
+    return next(new AppError('This user is not authorized! Kindly verify.', 401));
+  }
 
   if (currentUser.changedPasswordAfter(decoded.iat)) {
     return next(new AppError('User recently changed password! Please log in again.', 401));
