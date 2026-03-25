@@ -55,7 +55,7 @@ const errorHandler = (err, req, res, next) => {
   if (process.env.NODE_ENV === 'development') {
     sendErrorDev(err, res);
   } else {
-    let error = { ...err };
+    let error = { ...err, isOperational: err.isOperational };
     error.message = err.message;
 
     if (error.name === 'CastError') error = handleCastErrorDB(error);
