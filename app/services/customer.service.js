@@ -41,7 +41,7 @@ const addToCart = async (customerId, foodItemId, quantity) => {
     throw new AppError('Food item is not available', 400);
   }
 
-  let cart = await Cart.findOne({ customerId });
+  let cart = await Cart.findOne({customerId });
   if (!cart) {
     cart = await Cart.create({
       customerId,
