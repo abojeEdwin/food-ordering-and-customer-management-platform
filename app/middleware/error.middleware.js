@@ -33,20 +33,18 @@ const sendErrorDev = (err, res) => {
 };
 
 const sendErrorProd = (err, res) => {
-  if (err.isOperational) {
-    res.status(err.statusCode).json({
-      status: err.status,
-      message: err.message,
-    });
-  } else {
+  if (!err.isOperational) {
     console.error('ERROR', err);
-
-    res.status(500).json({
-      status: 'error',
-      //message: 'Something went very wrong!',
-      err: err.message
-    });
   }
+
+  const statusCode = err.statusCode || 500;
+  const status = err.status || 'error';
+  const message = err.message || 'Unexpected error.';
+
+  res.status(statusCode).json({
+    status,
+    message,
+  });
 };
 
 const errorHandler = (err, req, res, next) => {
