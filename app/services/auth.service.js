@@ -12,7 +12,7 @@ const OTP_TTL_SECONDS = Number(process.env.OTP_TTL_SECONDS || 600);
 const otpKey = (email) => `otp:${email.toLowerCase()}`;
 
 const signup = async (userData) => {
-  const { email, password} = userData;
+  const { email, password, phoneNumber} = userData;
 
   const existingUser = await Customer.findOne({ email });
   if (existingUser) {
