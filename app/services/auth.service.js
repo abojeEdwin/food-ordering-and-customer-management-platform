@@ -25,6 +25,7 @@ const signup = async (userData) => {
   const newUser = await Customer.create({
     email,
     password: hashedPassword,
+    phoneNumber: phoneNumber,
     role: 'customer',
   });
 
