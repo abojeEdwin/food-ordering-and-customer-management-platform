@@ -5,6 +5,7 @@ const AppError = require('../utils/appError');
 const { User } = require('../model/user.model');
 const catchAsync = require('../utils/catchAsync');
 const { isTokenBlacklisted } = require('../services/token.service');
+const config = require('../config/env');
 
 const protect = catchAsync(async (req, res, next) => {
   let token;
@@ -16,7 +17,7 @@ const protect = catchAsync(async (req, res, next) => {
     return next(new AppError('You are not logged in! Please log in to get access.', 401));
   }
 
-  const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
+  const decoded = await promisify(jwt.verify)(token, config.jwt.secret);
 
   if (await isTokenBlacklisted(token)) {
     return next(new AppError('Your session has been logged out. Please log in again.', 401));

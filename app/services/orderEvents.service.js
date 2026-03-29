@@ -1,6 +1,7 @@
 const { redisClient } = require('../config/redis');
 const { publish } = require('./redisPubSub.service');
 const { queueOrderStatus } = require('../queues/order.queue');
+const config = require('../config/env');
 
 const ORDER_STATUS_CHANNEL = 'orders:status';
 const ORDER_EVENTS_STREAM = 'order:events';
@@ -40,7 +41,7 @@ const publishOrderStatus = async (eventType, order, meta = {}) => {
 };
 
 const enqueueOrderNotification = async (order) => {
-  if (process.env.ORDER_QUEUE_ENABLED !== 'true') {
+  if (!config.orderQueueEnabled) {
     return;
   }
   try {

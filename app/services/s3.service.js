@@ -1,15 +1,16 @@
 const path = require('path');
 const crypto = require('crypto');
 const { S3Client, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
-const AppError = require('../utils/appError');
+const config = require('../config/env');
+const S3BucketException = require("../exceptions/S3BucketException");
 
 const getS3Client = () => {
-  const accessKeyId = process.env.S3_ACCESS_KEY;
-  const secretAccessKey = process.env.S3_SECRET_KEY;
-  const region = process.env.S3_REGION;
+  const accessKeyId = config.s3.accessKeyId;
+  const secretAccessKey = config.s3.secretAccessKey;
+  const region = config.s3.region;
 
   if (!accessKeyId || !secretAccessKey || !region) {
-    throw new AppError('S3 credentials or region not configured', 500);
+    throw new S3BucketException('S3 credentials or region not configured', 500);
   }
 
   return new S3Client({
@@ -26,7 +27,7 @@ const buildObjectKey = (folder, originalName) => {
 };
 
 const resolvePublicUrl = (bucket, region, key) => {
-  const explicitBaseUrl = process.env.S3_PUBLIC_BASE_URL;
+  const explicitBaseUrl = config.s3.publicBaseUrl;
   if (explicitBaseUrl) {
     return `${explicitBaseUrl.replace(/\/$/, '')}/${key}`;
   }
@@ -35,14 +36,14 @@ const resolvePublicUrl = (bucket, region, key) => {
 
 const uploadImage = async (file, folder) => {
   if (!file) {
-    throw new AppError('Image file is required', 400);
+    throw new S3BucketException('Image file is required', 400);
   }
 
-  const bucket = process.env.S3_BUCKET_NAME;
-  const region = process.env.S3_REGION;
+  const bucket = config.s3.bucket;
+  const region = config.s3.region;
 
   if (!bucket) {
-    throw new AppError('S3 bucket not configured', 500);
+    throw new S3BucketException('S3 bucket not configured', 500);
   }
 
   const s3 = getS3Client();
@@ -68,9 +69,9 @@ const deleteObject = async (key) => {
     return;
   }
 
-  const bucket = process.env.S3_BUCKET_NAME;
+  const bucket = config.s3.bucket;
   if (!bucket) {
-    throw new AppError('S3 bucket not configured', 500);
+    throw new S3BucketException('S3 bucket not configured', 500);
   }
 
   const s3 = getS3Client();

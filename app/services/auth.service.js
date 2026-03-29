@@ -1,14 +1,23 @@
 
 const { User, Customer } = require('../model/user.model');
-const AppError = require('../utils/appError');
 const { generateOtp, verifyOtp } = require('../utils/otp');
 const { sendEmail } = require('./email.service');
 const { generateToken } = require('../utils/jwt');
 const bcrypt = require('bcryptjs');
 const { redisClient } = require('../config/redis');
 const { blacklistToken } = require('./token.service');
+const CacheService = require('../services/cache.service');
+const AccountAlreadyVerifiedException = require("../exceptions/AccountAlreadyVerifiedException");
+const FailedToSendEmailException = require("../exceptions/FailedToSendEmailException");
+const UserNotFoundException = require("../exceptions/UserNotFoundException");
+const AccountNotActiveException = require("../exceptions/AccountNotActiveException");
+const AccountNotVerifiedException = require("../exceptions/AccountNotVerifiedException");
+const InvalidCredentialException = require("../exceptions/InvalidCredentialException");
+const InvalidOrExpiredOtpException = require("../exceptions/InvalidOrExpiredOtpException");
+const AccountAlreadyExistsException = require("../exceptions/AccountAlreadyExistException");
+const config = require('../config/env');
 
-const OTP_TTL_SECONDS = Number(process.env.OTP_TTL_SECONDS || 600);
+const OTP_TTL_SECONDS = config.otpTtlSeconds;
 const otpKey = (email) => `otp:${email.toLowerCase()}`;
 
 const signup = async (userData) => {
@@ -16,7 +25,7 @@ const signup = async (userData) => {
 
   const existingUser = await Customer.findOne({ email });
   if (existingUser) {
-    throw new AppError('An account with this email already exists.', 409);
+    throw new AccountAlreadyExistsException('An account with this email already exists.', 409);
   }
 
   const hashedPassword = await bcrypt.hash(password, 12);
@@ -30,7 +39,7 @@ const signup = async (userData) => {
   });
 
   try {
-    await redisClient.set(otpKey(email), otp, { EX: OTP_TTL_SECONDS });
+    await CacheService.setJson(otpKey(email),otp,OTP_TTL_SECONDS)
     await sendEmail({
       to: newUser.email,
       subject: 'Verify Your Account',
@@ -38,7 +47,7 @@ const signup = async (userData) => {
     });
   } catch (emailError) {
     await Customer.findByIdAndDelete(newUser._id);
-    throw new AppError('There was an error sending the email. Try again later!', 500);
+    throw new FailedToSendEmailException('There was an error sending the email. Try again later!', 500);
   }
 
   const token = generateToken(newUser._id);
@@ -49,7 +58,6 @@ const signup = async (userData) => {
     isVerified: newUser.isVerified,
     isActive: newUser.isActive,
   };
-
   return { user: userResponse, token };
 };
 
@@ -57,11 +65,11 @@ const verifyOtpService = async (email, otp) => {
   const user = await Customer.findOne({ email });
 
   if (!user) {
-    throw new AppError('User not found.', 404);
+    throw new UserNotFoundException('User not found.', 404);
   }
 
   if (user.isVerified) {
-    throw new AppError('Account already verified.', 400);
+    throw new AccountAlreadyVerifiedException('Account already verified.', 400);
   }
 
   const cachedOtp = await redisClient.get(otpKey(email));
@@ -70,7 +78,7 @@ const verifyOtpService = async (email, otp) => {
     : verifyOtp(otp, user.otp, user.otpExpires);
 
   if (!isValidOtp) {
-    throw new AppError('Invalid or expired OTP.', 400);
+    throw new InvalidOrExpiredOtpException('Invalid or expired OTP.', 400);
   }
 
   user.isVerified = true;
@@ -78,7 +86,7 @@ const verifyOtpService = async (email, otp) => {
   user.otp = undefined;
   user.otpExpires = undefined;
   await user.save();
-  await redisClient.del(otpKey(email));
+  await CacheService.delByPattern(otpKey(email))
 
   return {
     id: user._id,
@@ -93,15 +101,15 @@ const login = async (email, password) => {
   const user = await User.findOne({ email }).select('+password');
 
   if (!user || !(await bcrypt.compare(password, user.password))) {
-    throw new AppError('Incorrect email or password', 401);
+    throw new InvalidCredentialException('Incorrect email or password', 401);
   }
 
   if (!user.isVerified) {
-    throw new AppError('Please verify your account first.', 403);
+    throw new AccountNotVerifiedException('Please verify your account first.', 403);
   }
 
   if (!user.isActive) {
-    throw new AppError('Your account has been deactivated.', 403);
+    throw new AccountNotActiveException('Your account has been deactivated.', 403);
   }
 
   user.lastLogin = Date.now();
@@ -122,16 +130,14 @@ const resendOtp = async (email) => {
   const user = await Customer.findOne({ email });
 
   if (!user) {
-    throw new AppError('User not found.', 404);
+    throw new UserNotFoundException('User not found.', 404);
   }
-
   if (user.isVerified) {
-    throw new AppError('Account already verified.', 400);
+    throw new AccountAlreadyVerifiedException('Account already verified.', 400);
   }
 
   const { otp } = generateOtp();
-  await redisClient.set(otpKey(email), otp, { EX: OTP_TTL_SECONDS });
-
+  await CacheService.setJson(otpKey(email), otp, OTP_TTL_SECONDS)
   try {
     await sendEmail({
       to: user.email,
@@ -139,9 +145,8 @@ const resendOtp = async (email) => {
       text: `Your OTP is: ${otp}`,
     });
   } catch (emailError) {
-    throw new AppError('There was an error sending the email. Try again later!', 500);
+    throw new FailedToSendEmailException('There was an error sending the email. Try again later!', 500);
   }
-
   return { message: 'OTP resent successfully.' };
 };
 

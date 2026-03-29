@@ -2,15 +2,21 @@
 const Category = require('../model/category.model');
 const FoodItem = require('../model/foodItem.model');
 const Order = require('../model/order.model');
-const AppError = require("../utils/appError");
 const { buildKey, getJson, setJson, delByPattern } = require('./cache.service');
 const { appendOrderEvent, publishOrderStatus, enqueueOrderNotification } = require('./orderEvents.service');
+const CategoryAlreadyExistException = require("../exceptions/CategoryAlreadyExistException");
+const CategoryNotFoundException = require("../exceptions/CategoryNotFoundException");
+const FoodItemAlreadyExistException = require("../exceptions/FoodItemAlreadyExistException");
+const FoodItemNotFoundException = require("../exceptions/FoodItemNotFoundException");
+const OrderNotFoundException = require("../exceptions/OrderNotFoundException");
+const InvalidStatusTransitionException = require("../exceptions/InvalidStatusTransitionException");
+const InvalidCredentialException = require("../exceptions/InvalidCredentialException");
 
 
 const createCategory = async (categoryBody) => {
   const existingCategory = await Category.findOne({ name: categoryBody.name });
   if (existingCategory) {
-    throw new AppError('Category already exists', 400);
+    throw new CategoryAlreadyExistException('Category already exists', 400);
   }
   return Category.create(categoryBody);
 };
@@ -18,11 +24,11 @@ const createCategory = async (categoryBody) => {
 const addFoodItem = async (foodItemBody) => {
   const category = await Category.findOne({ name: foodItemBody.categoryName });
   if (!category) {
-    throw new AppError('Category not found', 404);
+    throw new CategoryNotFoundException('Category not found', 404);
   }
   const existingFoodItem = await FoodItem.findOne({ name: foodItemBody.name, categoryName: foodItemBody.categoryName });
   if (existingFoodItem) {
-    throw new AppError('Food item already exists', 400);
+    throw new FoodItemAlreadyExistException('Food item already exists', 400);
   }
   const created = await FoodItem.create(foodItemBody);
   await delByPattern(buildKey('food', '*'));
@@ -33,7 +39,7 @@ const addFoodItem = async (foodItemBody) => {
 const updateFoodItem = async (foodItemId, updateBody) => {
   const foodItem = await FoodItem.findByIdAndUpdate(foodItemId, updateBody, { new: true });
   if (!foodItem) {
-    throw new AppError('Food item not found. Try adding the food item ',404);
+    throw new FoodItemNotFoundException('Food item not found. Try adding the food item ',404);
   }
   await delByPattern(buildKey('food', '*'));
   return foodItem;
@@ -42,7 +48,7 @@ const updateFoodItem = async (foodItemId, updateBody) => {
 const markFoodItemUnavailable = async (foodItemId) => {
   const foodItem = await FoodItem.findByIdAndUpdate(foodItemId, { isAvailable: false }, { new: true });
   if (!foodItem) {
-    throw new AppError('Food item not found',404);
+    throw new FoodItemNotFoundException('Food item not found',404);
   }
   await delByPattern(buildKey('food', '*'));
   return foodItem;
@@ -51,7 +57,7 @@ const markFoodItemUnavailable = async (foodItemId) => {
 const processOrder = async (orderId, newStatus) => {
   const order = await Order.findById(orderId);
   if (!order) {
-    throw new AppError('Order not found', 404);
+    throw new OrderNotFoundException('Order not found', 404);
   }
 
   const currentStatus = order.status;
@@ -65,7 +71,7 @@ const processOrder = async (orderId, newStatus) => {
   };
 
   if (!allowedTransitions[currentStatus] || !allowedTransitions[currentStatus].includes(newStatus)) {
-    throw new AppError(`Invalid status transition from ${currentStatus} to ${newStatus}`, 400);
+    throw new InvalidStatusTransitionException(`Invalid status transition from ${currentStatus} to ${newStatus}`, 400);
   }
 
   order.status = newStatus;
@@ -88,7 +94,7 @@ const getProductsByCategory = async (categoryId) => {
 
   const foodItems = await FoodItem.find({ categoryId });
   if (!foodItems) {
-    throw new AppError('Food items not found',404);
+    throw new FoodItemNotFoundException('Food items not found',404);
   }
   await setJson(cacheKey, foodItems);
   return foodItems;
@@ -97,7 +103,7 @@ const getProductsByCategory = async (categoryId) => {
 
 const findProductByName = async (name) => {
   if (!name) {
-    throw new AppError('Name is required',400);
+    throw new InvalidCredentialException('Name is required',400);
   }
   const cacheKey = buildKey('food', 'search', `name=${name}`);
   const cached = await getJson(cacheKey);
@@ -105,7 +111,7 @@ const findProductByName = async (name) => {
 
   const foodItems = await FoodItem.find({ name: { $regex: name, $options: 'i' } });
   if (!foodItems) {
-    throw new AppError('Food items not found',404);
+    throw new FoodItemNotFoundException('Food items not found',404);
   }
   await setJson(cacheKey, foodItems);
   return foodItems;
@@ -115,7 +121,7 @@ const findProductByName = async (name) => {
 const removeProduct = async (foodItemId) => {
   const foodItem = await FoodItem.findByIdAndDelete(foodItemId);
   if (!foodItem) {
-    throw new AppError('Food item not found',404);
+    throw new FoodItemNotFoundException('Food item not found',404);
   }
   await delByPattern(buildKey('food', '*'));
 };

@@ -12,6 +12,7 @@ const errorHandler = require('./middleware/error.middleware');
 const authRoutes = require('./routes/auth.routes');
 const adminRoutes = require('./routes/admin.routes');
 const customerRoutes = require('./routes/customer.routes');
+const config = require('./config/env');
 
 const app = express();
 
@@ -19,7 +20,7 @@ const app = express();
 app.use(helmet());
 
 
-if (process.env.NODE_ENV === 'development') {
+if (config.nodeEnv === 'development') {
   app.use(morgan('dev'));
 }
 

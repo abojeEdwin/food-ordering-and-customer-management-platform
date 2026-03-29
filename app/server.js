@@ -1,7 +1,7 @@
 
-const dotenv = require('dotenv');
 const connectDB = require('./config/db');
 const { startOrderStatusSubscriber } = require('./subscribers/orderStatus.subscriber');
+const config = require('./config/env');
 
 
 process.on('uncaughtException', (err) => {
@@ -10,18 +10,16 @@ process.on('uncaughtException', (err) => {
   process.exit(1);
 });
 
-dotenv.config({ path: './.env' });
-
 const app = require('./app');
 
 connectDB();
 
-const port = process.env.PORT || 3000;
+const port = config.port;
 const server = app.listen(port, () => {
   console.log(`App running on port ${port}...`);
 });
 
-if (process.env.REDIS_SUBSCRIBER_ENABLED === 'true') {
+if (config.redisSubscriberEnabled) {
   startOrderStatusSubscriber().catch((err) => {
     console.log('Order status subscriber failed:', err.message);
   });

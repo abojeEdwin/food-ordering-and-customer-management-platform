@@ -1,9 +1,18 @@
 const Cart = require('../model/cart.model');
 const FoodItem = require('../model/foodItem.model');
 const Order = require('../model/order.model');
-const AppError = require("../utils/appError");
 const { buildKey, getJson, setJson, delByPattern } = require('./cache.service');
 const { appendOrderEvent, publishOrderStatus, enqueueOrderNotification } = require('./orderEvents.service');
+const FoodItemNotFoundException = require("../exceptions/FoodItemNotFoundException");
+const InvalidCredentialException = require("../exceptions/InvalidCredentialException");
+const FoodItemNotAvailableException = require("../exceptions/FoodItemNotAvailableException");
+const CartNotFoundException = require("../exceptions/CartNotFoundException");
+const {EmptyCartException} = require("../exceptions/EmptyCartException");
+const {ItemUnavailableException} = require("../exceptions/ItemUnavailableException");
+const {CartException} = require("../exceptions/CartException");
+const OrderNotFoundException = require("../exceptions/OrderNotFoundException");
+const {PaymentFailedException} = require("../exceptions/PaymentFailedException");
+const {OrderException} = require("../exceptions/OrderException");
 
 const browseFood = async (query) => {
   const filter = { isAvailable: true };
@@ -30,15 +39,15 @@ const browseFood = async (query) => {
 
 const addToCart = async (customerId, foodItemId, quantity) => {
   if (!quantity || quantity < 1) {
-    throw new AppError('Quantity must be at least 1', 400);
+    throw new InvalidCredentialException('Quantity must be at least 1', 400);
   }
 
   const foodItem = await FoodItem.findById(foodItemId);
   if (!foodItem) {
-    throw new AppError('Food item not found', 404);
+    throw new FoodItemNotFoundException('Food item not found', 404);
   }
   if (!foodItem.isAvailable) {
-    throw new AppError('Food item is not available', 400);
+    throw new FoodItemNotAvailableException('Food item is not available', 400);
   }
 
   let cart = await Cart.findOne({customerId });
@@ -70,7 +79,7 @@ const viewCart = async (customerId) => {
 const removeFromCart = async (customerId, foodItemId) => {
   let cart = await Cart.findOne({ customerId });
   if (!cart) {
-    throw new AppError('Cart not found', 404);
+    throw new CartNotFoundException('Cart not found', 404);
   }
 
   cart.foodItems = cart.foodItems.filter(item => item.foodItemId.toString() !== foodItemId);
@@ -81,7 +90,7 @@ const removeFromCart = async (customerId, foodItemId) => {
 const clearCart = async (customerId) => {
   let cart = await Cart.findOne({ customerId });
   if (!cart) {
-    throw new AppError('Cart not found', 404);
+    throw new CartNotFoundException('Cart not found', 404);
   }
   cart.foodItems = [];
   await cart.save();
@@ -91,7 +100,7 @@ const clearCart = async (customerId) => {
 const placeOrder = async (customerId, { paymentMethod, billingAddress }) => {
   const cart = await Cart.findOne({ customerId }).populate('foodItems.foodItemId');
   if (!cart || cart.foodItems.length === 0) {
-    throw new AppError('Cart is empty', 400);
+    throw new EmptyCartException('Cart is empty', 400);
   }
 
   let totalPrice = 0;
@@ -119,11 +128,11 @@ const placeOrder = async (customerId, { paymentMethod, billingAddress }) => {
   }
 
   if (unavailableItems.length > 0) {
-    throw new AppError(`The following items are no longer available: ${unavailableItems.join(', ')}. Please remove them from your cart.`, 400);
+    throw new ItemUnavailableException(`The following items are no longer available: ${unavailableItems.join(', ')}. Please remove them from your cart.`, 400);
   }
 
   if (orderItems.length === 0) {
-    throw new AppError('No valid items in cart to order', 400);
+    throw new CartException('No valid items in cart to order', 400);
   }
 
   const order = await Order.create({
@@ -151,11 +160,11 @@ const cancelOrder = async (customerId, orderId) => {
   const order = await Order.findOne({ _id: orderId, customerId });
 
   if (!order) {
-    throw new AppError('Order not found', 404);
+    throw new OrderNotFoundException('Order not found', 404);
   }
 
   if (order.status !== 'pending') {
-    throw new AppError('Order cannot be cancelled at this stage', 400);
+    throw new OrderException('Order cannot be cancelled at this stage', 400);
   }
 
   order.status = 'cancelled';
@@ -170,15 +179,15 @@ const simulatePayment = async (customerId, orderId) => {
   const order = await Order.findOne({ _id: orderId, customerId });
 
   if (!order) {
-    throw new AppError('Order not found', 404);
+    throw new OrderNotFoundException('Order not found', 404);
   }
 
   if (order.status === 'cancelled') {
-      throw new AppError('Cannot pay for a cancelled order', 400);
+      throw new OrderException('Cannot pay for a cancelled order', 400);
   }
   
   if (order.paymentStatus === 'paid') {
-    throw new AppError('Order is already paid', 400);
+    throw new OrderException('Order is already paid', 400);
   }
 
   // Simulate payment processing (90% success rate)
@@ -198,7 +207,7 @@ const simulatePayment = async (customerId, orderId) => {
     await appendOrderEvent('payment_failed', order, { source: 'customer' });
     await publishOrderStatus('payment_failed', order, { source: 'customer' });
     await enqueueOrderNotification(order);
-    throw new AppError('Payment failed. Please try again.', 400);
+    throw new PaymentFailedException('Payment failed. Please try again.', 400);
   }
 };
 

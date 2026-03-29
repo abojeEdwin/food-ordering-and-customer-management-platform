@@ -1,9 +1,10 @@
 
 const redis = require('redis');
+const config = require('./env');
 
-const redisHost = process.env.REDIS_HOST || 'localhost';
-const redisPort = process.env.REDIS_PORT || 6379;
-const explicitUrl = process.env.REDIS_URL;
+const redisHost = config.redis.host || 'localhost';
+const redisPort = config.redis.port || 6379;
+const explicitUrl = config.redis.url;
 const hostIsUrl = typeof redisHost === 'string' && redisHost.startsWith('redis://');
 const redisUrl = explicitUrl || (hostIsUrl ? redisHost : `redis://${redisHost}:${redisPort}`);
 

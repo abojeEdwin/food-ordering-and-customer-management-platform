@@ -1,6 +1,7 @@
 const { redisClient } = require('../config/redis');
+const config = require('../config/env');
 
-const DEFAULT_TTL_SECONDS = Number(process.env.CACHE_TTL_SECONDS || 60);
+const DEFAULT_TTL_SECONDS = config.cacheTtlSeconds;
 
 const buildKey = (...parts) => {
   return ['cache', ...parts].join(':');

@@ -1,5 +1,6 @@
 
 const AppError = require('../utils/appError');
+const config = require('../config/env');
 
 const handleCastErrorDB = (err) => {
   const message = `Invalid ${err.path}: ${err.value}.`;
@@ -51,7 +52,7 @@ const errorHandler = (err, req, res, next) => {
   err.statusCode = err.statusCode || 500;
   err.status = err.status || 'error';
 
-  if (process.env.NODE_ENV === 'development') {
+  if (config.nodeEnv === 'development') {
     sendErrorDev(err, res);
   } else {
     let error = { ...err, isOperational: err.isOperational };

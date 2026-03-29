@@ -1,14 +1,15 @@
+const config = require('../config/env');
 
 const mailJet = require('node-mailjet').apiConnect(
-  process.env.EMAIL_USERNAME,
-  process.env.EMAIL_PASSWORD
+  config.email.username,
+  config.email.password
 );
 
 const sendEmail = async (options) => {
 
   const fromEmail =
-    process.env.EMAIL_FROM_ADDRESS || process.env.EMAIL_FROM_EMAIL;
-  const fromName = process.env.EMAIL_FROM_NAME;
+    config.email.fromAddress || config.email.fromEmail;
+  const fromName = config.email.fromName;
 
   const request = mailJet.post('send', { version: 'v3.1' }).request({
     Messages: [
